@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+
+# Configuración y Secretos
+.env
+
+# Base de Datos (SQLite)
+config/*.db
+config/*.db-journal
+*.db
+*.db-journal
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# IDE / Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+package-lock.json
