@@ -338,11 +338,129 @@ const createAbono = async (req, res) => {
     }
 }
 
+// Actualizar abono
+const updateAbono = async (req, res) => {
+    try {
+        const {
+            id
+        } = req.params;
+        const {
+            monto_abonado,
+            moneda,
+            tipo_cambio,
+            nota
+        } = req.body;
+
+        const abono = await Abono.findByPk(id);
+        if (!abono) {
+            return res.status(404).json({
+                message: "Abono no encontrado"
+            });
+        }
+
+        const deuda = await Deuda.findByPk(abono.id_deuda);
+
+        // Actualizar el abono
+        await abono.update({
+            monto_abonado: monto_abonado !== undefined ? parseFloat(monto_abonado) : abono.monto_abonado,
+            moneda: moneda !== undefined ? moneda : abono.moneda,
+            tipo_cambio: tipo_cambio !== undefined ? parseFloat(tipo_cambio) : abono.tipo_cambio,
+            nota: nota !== undefined ? nota : abono.nota
+        });
+
+        // Recalcular saldo de la deuda
+        const abonosExistentes = await Abono.findAll({
+            where: {
+                id_deuda: deuda.id_deuda
+            }
+        });
+        const totalAbonado = abonosExistentes.reduce((sum, a) => sum + parseFloat(a.monto_abonado), 0);
+        const montoConInteres = deuda.interes_aplicado ?
+            parseFloat(deuda.monto_total) + parseFloat(deuda.monto_interes || 0) :
+            parseFloat(deuda.monto_total);
+
+        const nuevoRestante = Math.round((montoConInteres - totalAbonado) * 100) / 100;
+
+        // Actualizar el restate_actual en el abono actual (opcional, pero útil)
+        await abono.update({
+            restante_actual: nuevoRestante > 0 ? nuevoRestante : 0
+        });
+
+        // Actualizar estado de la deuda
+        const nuevoEstado = nuevoRestante <= 0 ? 'pagada' : 'en_progreso';
+        await deuda.update({
+            estado_pago: nuevoEstado
+        });
+
+        res.json({
+            message: "Abono actualizado exitosamente",
+            abono,
+            nuevo_saldo: nuevoRestante > 0 ? nuevoRestante : 0,
+            estado_deuda: nuevoEstado
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Error al actualizar el abono"
+        });
+    }
+}
+
+// Eliminar abono
+const deleteAbono = async (req, res) => {
+    try {
+        const {
+            id
+        } = req.params;
+        const abono = await Abono.findByPk(id);
+        if (!abono) {
+            return res.status(404).json({
+                message: "Abono no encontrado"
+            });
+        }
+
+        const id_deuda = abono.id_deuda;
+        await abono.destroy();
+
+        // Recalcular estado de la deuda
+        const deuda = await Deuda.findByPk(id_deuda);
+        const abonosRestantes = await Abono.findAll({
+            where: {
+                id_deuda
+            }
+        });
+        const totalAbonado = abonosRestantes.reduce((sum, a) => sum + parseFloat(a.monto_abonado), 0);
+        const montoConInteres = deuda.interes_aplicado ?
+            parseFloat(deuda.monto_total) + parseFloat(deuda.monto_interes || 0) :
+            parseFloat(deuda.monto_total);
+
+        const nuevoRestante = montoConInteres - totalAbonado;
+        const nuevoEstado = nuevoRestante <= 0 ? 'pagada' : (totalAbonado > 0 ? 'en_progreso' : 'pendiente');
+
+        await deuda.update({
+            estado_pago: nuevoEstado
+        });
+
+        res.json({
+            message: "Abono eliminado exitosamente",
+            nuevo_estado_deuda: nuevoEstado
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Error al eliminar el abono"
+        });
+    }
+}
+
 export {
     login,
     register,
     createDeuda,
     updateDeuda,
     deleteDeuda,
-    createAbono
+    createAbono,
+    updateAbono,
+    deleteAbono
 };

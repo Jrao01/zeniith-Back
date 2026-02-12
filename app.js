@@ -24,7 +24,7 @@ app.get("/ping", (req, res) => {
 });
 
 sequelize.sync({
-        force: true
+        alter: true
     })
     .then(() => {
         console.log("Database synced");

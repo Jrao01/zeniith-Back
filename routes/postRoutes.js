@@ -4,7 +4,9 @@ import {
     createDeuda,
     updateDeuda,
     deleteDeuda,
-    createAbono
+    createAbono,
+    updateAbono,
+    deleteAbono
 } from "../controllers/postControllers.js";
 
 import {
@@ -34,6 +36,8 @@ router.delete("/deudas/:id", deleteDeuda);
 router.get("/abonos", getAbonos);
 router.get("/abonos/deuda/:id_deuda", getAbonosByDeuda);
 router.post("/abonos", createAbono);
+router.put("/abonos/:id", updateAbono);
+router.delete("/abonos/:id", deleteAbono);
 
 // Dashboard route
 router.get("/dashboard/:id_usuario", getDashboardData);
